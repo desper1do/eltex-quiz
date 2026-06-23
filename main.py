@@ -1,25 +1,7 @@
 #!/usr/bin/env python3
-from google import genai
-from google.genai import types
-import json, os, sys, time
+import json
 from pathlib import Path
 
-API_KEY = os.environ.get("GEMINI_API_KEY", "")
-
-def process_image(client, img_path):
-    with open(img_path, "rb") as f:
-        img_bytes = f.read()
-    ext = Path(img_path).suffix.lower().lstrip(".")
-    mt = {"jpg":"image/jpeg","jpeg":"image/jpeg","png":"image/png"}.get(ext,"image/jpeg")
-    response = client.models.generate_content(
-        model="gemini-1.5-flash",
-        contents=[
-            types.Part.from_bytes(data=img_bytes, mime_type=mt),
-            types.Part.from_text(text='Russian quiz screenshot (Элтекс). Correct answer = filled radio button (dark circle). Return ONLY valid JSON, no markdown: {"question":"...","options":[{"text":"...","isCorrect":true},{"text":"...","isCorrect":false}]}')
-        ]
-    )
-    raw = response.text.replace("```json","").replace("```","").strip()
-    return json.loads(raw)
 
 def build_html(questions):
     q_json = json.dumps(questions, ensure_ascii=False)
@@ -191,60 +173,8 @@ function showResults(){{
 </body>
 </html>"""
 
-def main():
-    if not API_KEY:
-        print("Нет ключа! Запусти сначала:")
-        print("  export GEMINI_API_KEY=ВАШ_КЛЮЧ")
-        sys.exit(1)
-
-    folder = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(".")
-    images = sorted(
-        list(folder.glob("*.png")) +
-        list(folder.glob("*.jpg")) +
-        list(folder.glob("*.jpeg"))
-    )
-
-    if not images:
-        print(f"Нет изображений в папке: {folder.absolute()}")
-        sys.exit(1)
-
-    out = Path("questions.json")
-    questions = json.loads(out.read_text(encoding="utf-8")) if out.exists() else []
-    done = {q.get("source","") for q in questions}
-    remaining = [img for img in images if img.name not in done]
-
-    print(f"Папка:      {folder.absolute()}")
-    print(f"Всего фото: {len(images)}")
-    print(f"Готово:     {len(done)}")
-    print(f"Осталось:   {len(remaining)}\n")
-
-    if not remaining:
-        print("Все фото уже обработаны!")
-    else:
-        client = genai.Client(api_key=API_KEY)
-
-        for i, img in enumerate(remaining):
-            print(f"[{i+1}/{len(remaining)}] {img.name} ... ", end="", flush=True)
-            try:
-                parsed = process_image(client, img)
-                q_text = parsed.get("question","")
-                opts = parsed.get("options",[])
-                if q_text and len(opts) >= 2 and any(o.get("isCorrect") for o in opts):
-                    parsed["source"] = img.name
-                    questions.append(parsed)
-                    print(f"OK  {q_text[:55]}...")
-                else:
-                    print("нет правильного ответа")
-            except Exception as e:
-                print(f"ошибка: {str(e)[:70]}")
-
-            out.write_text(json.dumps(questions, ensure_ascii=False, indent=2), encoding="utf-8")
-            time.sleep(1.5)
-
-    html_path = Path("quiz.html")
-    html_path.write_text(build_html(questions), encoding="utf-8")
-    print(f"\nСохранено {len(questions)} вопросов -> questions.json")
-    print(f"Открой в браузере -> quiz.html")
 
 if __name__ == "__main__":
-    main()
+    questions = json.loads(Path("questions.json").read_text(encoding="utf-8"))
+    Path("quiz.html").write_text(build_html(questions), encoding="utf-8")
+    print(f"quiz.html собран: {len(questions)} вопросов")

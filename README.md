@@ -11,21 +11,14 @@ git clone https://github.com/USERNAME/eltex-quiz.git
 cd eltex-quiz
 ```
 
-Затем в терминале WSL:
+Затем открой `quiz.html` двойным кликом или через терминал WSL:
+
 ```bash
 explorer.exe quiz.html
 ```
 
-Или просто дважды кликни на `quiz.html` в проводнике Windows.
-
-## Добавить вопросы из скриншотов
-
-Нужен [Gemini API key](https://aistudio.google.com/app/apikey):
+## Пересобрать quiz.html из questions.json
 
 ```bash
-pip install google-genai
-export GEMINI_API_KEY=ваш_ключ
-python main.py папка_со_скриншотами
+python main.py
 ```
-
-Скрипт обработает фото и пересоберёт `quiz.html`.
