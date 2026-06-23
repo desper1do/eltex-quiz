@@ -4,20 +4,20 @@
 
 ## Открыть тест
 
-Клонируй репо и открой `quiz.html` в браузере — интернет не нужен.
+Клонируй репо и открой `index.html` в браузере — интернет не нужен.
 
 ```bash
 git clone https://github.com/USERNAME/eltex-quiz.git
 cd eltex-quiz
 ```
 
-Затем открой `quiz.html` двойным кликом или через терминал WSL:
+Затем открой `index.html` двойным кликом или через терминал WSL:
 
 ```bash
-explorer.exe quiz.html
+explorer.exe index.html
 ```
 
-## Пересобрать quiz.html из questions.json
+## Пересобрать index.html из questions.json
 
 ```bash
 python main.py

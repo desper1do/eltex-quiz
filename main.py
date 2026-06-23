@@ -176,5 +176,5 @@ function showResults(){{
 
 if __name__ == "__main__":
     questions = json.loads(Path("questions.json").read_text(encoding="utf-8"))
-    Path("quiz.html").write_text(build_html(questions), encoding="utf-8")
-    print(f"quiz.html собран: {len(questions)} вопросов")
+    Path("index.html").write_text(build_html(questions), encoding="utf-8")
+    print(f"index.html собран: {len(questions)} вопросов")
