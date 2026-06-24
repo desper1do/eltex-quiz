@@ -1534,7 +1534,7 @@
     "options": [
       {
         "text": "255.255.255.0.",
-        "isCorrect": false
+        "isCorrect": true
       },
       {
         "text": "255.0.0.0.",
@@ -1542,7 +1542,7 @@
       },
       {
         "text": "255.255.0.0.",
-        "isCorrect": true
+        "isCorrect": false
       },
       {
         "text": "255.255.255.255.",
