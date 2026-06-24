@@ -882,11 +882,11 @@
       },
       {
         "text": "DNS",
-        "isCorrect": true
+        "isCorrect": false
       },
       {
         "text": "FTP",
-        "isCorrect": false
+        "isCorrect": true
       },
       {
         "text": "SMTP",
