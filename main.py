@@ -41,7 +41,7 @@ h1{{font-size:20px;font-weight:500;margin-bottom:1rem}}
 </head>
 <body>
 <div class="wrap">
-<h1>Тренажёр Элтекс</h1>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem"><h1 style="margin:0">Тренажёр Элтекс</h1><a href="answers.html" style="font-size:15px;font-weight:500;color:#1a1a1a;text-decoration:none;border:1px solid #ccc;padding:6px 14px;border-radius:8px">Все вопросы →</a></div>
 <div class="stats">
   <div class="stat"><div class="stat-n" id="sTotal">{len(questions)}</div><div class="stat-l">Вопросов</div></div>
   <div class="stat"><div class="stat-n" id="sScore">—</div><div class="stat-l">Счёт</div></div>
@@ -194,6 +194,90 @@ function showResults(){{
 </html>"""
 
 
+SVG_CHECK = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;margin-top:2px"><path d="M2 7l3.5 3.5L12 3" stroke="#2e7d32" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+SVG_SEARCH = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="6.5" cy="6.5" r="4.5" stroke="#aaa" stroke-width="1.5"/><line x1="10" y1="10" x2="14" y2="14" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/></svg>'
+
+
+def build_answers_html(questions):
+    items_html = ""
+    for i, q in enumerate(questions):
+        opts_html = ""
+        for o in q["options"]:
+            if o["isCorrect"]:
+                opts_html += (
+                    f'<div class="opt opt-correct">'
+                    f'{SVG_CHECK}<span>{o["text"]}</span>'
+                    f'</div>'
+                )
+            else:
+                opts_html += f'<div class="opt opt-wrong">{o["text"]}</div>'
+        items_html += (
+            f'<div class="item" data-q="{i+1}">'
+            f'<div class="qnum">{i+1}</div>'
+            f'<div class="qtext">{q["question"]}</div>'
+            f'{opts_html}'
+            f'</div>'
+        )
+    total = len(questions)
+    return f"""<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Все вопросы — Элтекс</title>
+<style>
+*{{box-sizing:border-box;margin:0;padding:0}}
+body{{font-family:system-ui,sans-serif;background:#f5f5f5;color:#1a1a1a;padding:1rem}}
+.wrap{{max-width:720px;margin:0 auto}}
+.topbar{{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}}
+h1{{font-size:20px;font-weight:500}}
+a.back{{font-size:13px;color:#666;text-decoration:none;border:1px solid #ddd;padding:4px 10px;border-radius:6px}}
+.search-wrap{{position:relative;margin-bottom:1rem}}
+#searchInput{{width:100%;padding:10px 14px 10px 38px;border:1px solid #ddd;border-radius:10px;font-size:15px;background:#fff;outline:none}}
+#searchInput:focus{{border-color:#888}}
+.search-icon{{position:absolute;left:11px;top:50%;transform:translateY(-50%);pointer-events:none}}
+.counter{{font-size:13px;color:#888;margin-bottom:.75rem}}
+.item{{background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:1rem 1.25rem;margin-bottom:.6rem}}
+.item.hidden{{display:none}}
+.qnum{{font-size:12px;color:#aaa;margin-bottom:.3rem}}
+.qtext{{font-size:15px;font-weight:500;line-height:1.5;margin-bottom:.6rem}}
+.opt{{font-size:14px;line-height:1.4;padding:4px 0;display:flex;gap:6px;align-items:flex-start}}
+.opt-correct{{color:#2e7d32;text-decoration:underline;text-decoration-color:#4caf50;text-underline-offset:2px;font-weight:500}}
+.opt-wrong{{color:#999;padding-left:20px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="topbar">
+  <h1>Все вопросы — Элтекс</h1>
+  <a href="index.html" class="back">← Тренажёр</a>
+</div>
+<div class="search-wrap">
+  <span class="search-icon">{SVG_SEARCH}</span>
+  <input id="searchInput" type="search" placeholder="Поиск по вопросу или ответу..." autocomplete="off" oninput="filter()">
+</div>
+<div class="counter" id="counter">{total} вопросов</div>
+<div id="list">
+{items_html}
+</div>
+</div>
+<script>
+const items=Array.from(document.querySelectorAll('.item'));
+function filter(){{
+  const q=document.getElementById('searchInput').value.toLowerCase().trim();
+  let n=0;
+  items.forEach(function(el){{
+    const match=!q||el.textContent.toLowerCase().includes(q);
+    el.classList.toggle('hidden',!match);
+    if(match)n++;
+  }});
+  document.getElementById('counter').textContent=n+' вопросов';
+}}
+</script>
+</body>
+</html>"""
+
+
 if __name__ == "__main__":
     questions = json.loads(Path("questions.json").read_text(encoding="utf-8"))
     draft_path = Path("questions_draft.json")
@@ -202,4 +286,5 @@ if __name__ == "__main__":
         questions = questions + draft
         print(f"  questions.json: {len(questions) - len(draft)} | questions_draft.json: {len(draft)}")
     Path("index.html").write_text(build_html(questions), encoding="utf-8")
-    print(f"index.html собран: {len(questions)} вопросов")
+    Path("answers.html").write_text(build_answers_html(questions), encoding="utf-8")
+    print(f"index.html + answers.html собраны: {len(questions)} вопросов")
