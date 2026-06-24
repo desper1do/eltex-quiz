@@ -58,11 +58,11 @@ h1{{font-size:20px;font-weight:500;margin-bottom:1rem}}
   <div class="q-text" id="qText"></div>
   <div class="q-hint hidden" id="qHint"></div>
   <div id="qOpts"></div>
-  <div class="hidden" id="checkRow" style="margin-top:.75rem">
-    <button class="btn btn-main" onclick="checkMulti()">Проверить ответ</button>
-  </div>
-  <div class="hidden" id="nextRow" style="margin-top:.75rem">
-    <button class="btn btn-main" onclick="nextQ()">Следующий</button>
+  <div id="navRow" style="margin-top:.75rem;display:flex;gap:8px;align-items:center">
+    <button class="btn" id="prevBtn" onclick="prevQ()">← Назад</button>
+    <div style="flex:1"></div>
+    <button class="btn btn-main hidden" id="checkBtn" onclick="checkMulti()">Проверить ответ</button>
+    <button class="btn btn-main hidden" id="nextBtn" onclick="nextQ()">Следующий →</button>
   </div>
 </div>
 <div class="card hidden" id="resPane">
@@ -77,86 +77,105 @@ h1{{font-size:20px;font-weight:500;margin-bottom:1rem}}
 </div>
 <script>
 const ALL={q_json};
-let q=[],cur=0,score=0,answered=0;
+let q=[],cur=0,states=[];
 function $(x){{return document.getElementById(x)}}
+function calcScore(){{return states.filter(function(s){{return s&&s.answered&&s.correct}}).length}}
+function calcAnswered(){{return states.filter(function(s){{return s&&s.answered}}).length}}
+function updateStats(){{
+  const sc=calcScore(),an=calcAnswered();
+  $('qLive').textContent=sc+' / '+an;
+  $('sScore').textContent=an>0?sc:'—';
+  $('sPct').textContent=an>0?Math.round(sc/an*100)+'%':'—';
+}}
 function startQuiz(){{
   q=[...ALL].sort(()=>Math.random()-.5);
-  cur=0;score=0;answered=0;
+  cur=0;
+  states=new Array(q.length).fill(null);
   $('startPane').classList.add('hidden');
   $('resPane').classList.add('hidden');
   $('qPane').classList.remove('hidden');
+  $('sScore').textContent='—';$('sPct').textContent='—';
   showQ();
 }}
 function showQ(){{
   const item=q[cur];
   $('qNum').textContent='Вопрос '+(cur+1)+' из '+q.length;
-  $('qLive').textContent=score+' / '+answered;
+  updateStats();
   $('qText').textContent=item.question;
-  const opts=[...item.options].sort(()=>Math.random()-.5);
+  if(!states[cur]){{
+    states[cur]={{
+      opts:[...item.options].sort(()=>Math.random()-.5).map(function(o){{
+        return {{text:o.text,isCorrect:o.isCorrect,cssClass:'',disabled:false,selected:false}};
+      }}),
+      answered:false,correct:false
+    }};
+  }}
+  const st=states[cur];
+  const opts=st.opts;
   const correctCount=opts.filter(function(o){{return o.isCorrect}}).length;
   const isMulti=correctCount>1;
   const hint=$('qHint');
   if(isMulti){{hint.textContent='Выберите '+correctCount+' '+(correctCount===2?'варианта':'вариантов');hint.classList.remove('hidden');}}
   else{{hint.classList.add('hidden');}}
   $('qOpts').innerHTML='';
-  opts.forEach(function(o){{
+  opts.forEach(function(o,i){{
     const b=document.createElement('button');
-    b.className='opt';b.textContent=o.text;
+    b.className='opt'+(o.cssClass?' '+o.cssClass:'')+(o.selected?' selected':'');
+    b.textContent=o.text;
     b.dataset.correct=o.isCorrect?'1':'0';
-    b.dataset.selected='0';
-    if(isMulti){{
-      b.onclick=function(){{toggleOpt(b)}};
-    }}else{{
-      b.onclick=function(){{pick(b,o.isCorrect,opts)}};
+    b.disabled=o.disabled;
+    if(!o.disabled){{
+      if(isMulti){{b.onclick=function(){{toggleOpt(b,i)}};}}
+      else{{b.onclick=function(){{pick(b,o.isCorrect,i)}};}}
     }}
     $('qOpts').appendChild(b);
   }});
-  $('checkRow').classList.toggle('hidden',!isMulti);
-  $('nextRow').classList.add('hidden');
+  $('checkBtn').classList.toggle('hidden',!isMulti||st.answered);
+  $('nextBtn').classList.toggle('hidden',!st.answered);
+  $('prevBtn').classList.toggle('hidden',cur===0);
 }}
-function toggleOpt(btn){{
+function toggleOpt(btn,i){{
   if(btn.disabled)return;
-  if(btn.dataset.selected==='1'){{
-    btn.dataset.selected='0';
-    btn.classList.remove('selected');
-  }}else{{
-    btn.dataset.selected='1';
-    btn.classList.add('selected');
-  }}
+  const o=states[cur].opts[i];
+  o.selected=!o.selected;
+  if(o.selected){{btn.classList.add('selected');}}
+  else{{btn.classList.remove('selected');}}
 }}
 function checkMulti(){{
-  const btns=Array.from(document.querySelectorAll('.opt'));
-  btns.forEach(function(b){{b.disabled=true;b.classList.remove('selected');}});
-  answered++;
+  const st=states[cur];
+  const opts=st.opts;
   let allCorrect=true;
-  btns.forEach(function(b){{
-    const c=b.dataset.correct==='1';
-    const s=b.dataset.selected==='1';
-    if(c&&s){{b.classList.add('correct');}}
-    else if(!c&&s){{b.classList.add('wrong');allCorrect=false;}}
-    else if(c&&!s){{b.classList.add('reveal');allCorrect=false;}}
+  opts.forEach(function(o){{
+    o.disabled=true;
+    if(o.isCorrect&&o.selected){{o.cssClass='correct';}}
+    else if(!o.isCorrect&&o.selected){{o.cssClass='wrong';allCorrect=false;}}
+    else if(o.isCorrect&&!o.selected){{o.cssClass='reveal';allCorrect=false;}}
+    o.selected=false;
   }});
-  if(allCorrect)score++;
-  $('qLive').textContent=score+' / '+answered;
-  $('sScore').textContent=score;
-  $('sPct').textContent=Math.round(score/answered*100)+'%';
-  $('checkRow').classList.add('hidden');
-  $('nextRow').classList.remove('hidden');
+  st.answered=true;st.correct=allCorrect;
+  updateStats();
+  Array.from($('qOpts').children).forEach(function(b,i){{
+    const o=opts[i];
+    b.className='opt'+(o.cssClass?' '+o.cssClass:'');
+    b.disabled=true;
+  }});
+  $('checkBtn').classList.add('hidden');
+  $('nextBtn').classList.remove('hidden');
 }}
-function pick(btn,correct,opts){{
-  const btns=document.querySelectorAll('.opt');
-  btns.forEach(function(b){{b.disabled=true}});
-  answered++;
-  if(correct){{btn.classList.add('correct');score++;}}
-  else{{
-    btn.classList.add('wrong');
-    btns.forEach(function(b,i){{if(opts[i]&&opts[i].isCorrect)b.classList.add('reveal')}});
-  }}
-  $('qLive').textContent=score+' / '+answered;
-  $('sScore').textContent=score;
-  $('sPct').textContent=Math.round(score/answered*100)+'%';
-  $('nextRow').classList.remove('hidden');
+function pick(btn,isCorrect,i){{
+  const st=states[cur];
+  const opts=st.opts;
+  opts.forEach(function(o){{o.disabled=true;}});
+  st.answered=true;
+  if(isCorrect){{opts[i].cssClass='correct';st.correct=true;}}
+  else{{opts[i].cssClass='wrong';st.correct=false;opts.forEach(function(o){{if(o.isCorrect)o.cssClass='reveal';}});}}
+  updateStats();
+  Array.from($('qOpts').children).forEach(function(b,j){{
+    const o=opts[j];b.className='opt'+(o.cssClass?' '+o.cssClass:'');b.disabled=true;
+  }});
+  $('nextBtn').classList.remove('hidden');
 }}
+function prevQ(){{if(cur>0){{cur--;showQ();}}}}
 function nextQ(){{
   cur++;
   if(cur>=q.length)showResults();
@@ -165,8 +184,9 @@ function nextQ(){{
 function showResults(){{
   $('qPane').classList.add('hidden');
   $('resPane').classList.remove('hidden');
-  const pct=Math.round(score/q.length*100);
-  $('resFinal').textContent=score+' / '+q.length;
+  const sc=calcScore();
+  const pct=Math.round(sc/q.length*100);
+  $('resFinal').textContent=sc+' / '+q.length;
   $('resSub').textContent=pct>=80?'Отлично! Готов к экзамену':pct>=60?'Неплохо, есть что повторить':'Надо ещё поучить — '+pct+'%';
 }}
 </script>
@@ -176,5 +196,10 @@ function showResults(){{
 
 if __name__ == "__main__":
     questions = json.loads(Path("questions.json").read_text(encoding="utf-8"))
+    draft_path = Path("questions_draft.json")
+    if draft_path.exists():
+        draft = json.loads(draft_path.read_text(encoding="utf-8"))
+        questions = questions + draft
+        print(f"  questions.json: {len(questions) - len(draft)} | questions_draft.json: {len(draft)}")
     Path("index.html").write_text(build_html(questions), encoding="utf-8")
     print(f"index.html собран: {len(questions)} вопросов")
